@@ -59,6 +59,11 @@
 		},
 		onPullDownRefresh() {
 			this.getConfig();
+			uni.vibrateShort({
+				success: function () {
+					console.log('success');
+				}
+			});
 		}
 	}
 </script>

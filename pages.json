@@ -2,7 +2,8 @@
 	"pages": [{
 		"path": "pages/test/test",
 		"style": {
-			"navigationBarTitleText": "QR校验统计"
+			"navigationBarTitleText": "QR校验统计",
+			"enablePullDownRefresh": true
 		}
 	}, {
 		"path": "pages/selectConfig/selectConfig",
@@ -15,17 +16,19 @@
 		"path": "pages/login/login",
 		"style": {
 			"navigationBarTitleText": "123",
-			"enablePullDownRefresh": false
+			"enablePullDownRefresh": true
 		}
-
 	}, {
-		"path": "pages/scan/scan",
-		"style": {
-			"navigationBarTitleText": "",
-			"enablePullDownRefresh": false
-		}
-
-	}],
+            "path" : "pages/scan/scan",
+            "style" :                                                                                    
+            {
+                "navigationBarTitleText": "",
+                "enablePullDownRefresh": false,
+				"navigationStyle":"custom"
+            }
+            
+        }
+    ],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",

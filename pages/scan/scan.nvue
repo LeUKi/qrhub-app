@@ -1,68 +1,540 @@
 <template>
-	<view>
-		<barcode id='1' class="barcode" autostart="true" ref="barcode" background="rgb(0,0,0)" frameColor="#1C86EE"
-			scanbarColor="#1C86EE" :filters="fil" @marked="success1" @error="fail1"></barcode>
-		<button class="btn" @click="toStart">开始扫码识别</button>
-		<button class="btn" @click="tocancel">取消扫码识别</button>
-		<button class="btn" @click="toFlash">开启闪光灯</button>
-		<button class="btn" @click="toscan">预览</button>
+	<view :class="'m '+bgc">
+
+		<view class="bar">
+			<barcode id='1' class="barcode" autostart="false" ref="barcode" background="rgba(0,0,0)"
+				frameColor="#1C86EE22" scanbarColor="#1C86EE22" :filters="fil" @marked="success1" @error="fail1">
+			</barcode>
+		</view>
+
+		<view class="btns">
+			<view class="btn1">
+				<view class="btn11" @click="showconfig">
+					<text class="btn11f">{{this.config.name}}</text>
+				</view>
+				<view class="btn12">
+					<view class="btn121" @click="showconfig">
+						<text class="btn121f">{{this.config.tips}}</text>
+					</view>
+					<view class="btn122" @click="back">
+						<text class="btn122f">换配置</text>
+					</view>
+				</view>
+			</view>
+			<view class="btn2" @click="dialogToggle">
+				<uni-icons type="person-filled" size="30"></uni-icons>
+				<text class="btn2f">{{operator}}</text>
+			</view>
+			<view class="btn3" @click="toFlash">
+				<uni-icons type="eye-filled" size="30"> </uni-icons>
+				<text class="btn2f">{{flash?"开":"关"}}</text>
+			</view>
+		</view>
+		<!-- 
+		<view class="btns">
+			<button class="btn" @click="back"><text class="btn-f">选择配置</text></button>
+			<button class="btn" @click="dialogToggle"><text class="btn-f">操作员</text></button>
+			<button class="btn" @click="toStart"><text class="btn-f">取消扫码识别</text></button>
+			<button class="btn" @click="toFlash"><text class="btn-f">开启闪光灯</text></button>
+		</view> -->
+
+		<view class="res">
+			<view class="res1">
+				<uni-list>
+					<uni-list-item v-for="(item,index) in rlist" :key="item.time" :show-extra-icon="true"
+						:extra-icon="p[item.state].icon" :title="item.code" :note="dateFormat(item.time)"
+						:rightText="p[item.state].t" :showArrow="p[item.state].ar" @click="reup(item,index)"
+						clickable />
+					<!-- 					<uni-list-item :show-extra-icon="true" :extra-icon="p.upok.icon" title="列表左侧带扩展图标"
+						note="323904324230231" rightText="上传成功" />
+					<uni-list-item :show-extra-icon="true" showArrow :extra-icon="p.upno.icon" title="列表左侧带扩展图标"
+						note="323904324230231" rightText="点击重新上传" />
+					<uni-list-item :show-extra-icon="true" :extra-icon="p.uping.icon" title="列表左侧带扩展图标"
+						note="323904324230231" rightText="上传中" /> -->
+				</uni-list>
+			</view>
+		</view>
+
 	</view>
 </template>
+
 <script>
 	export default {
 		onLoad() {
+			this.bgc = "bgcG"
+		},
+		onReady() {
+			if (this.isfirst) {
+				this.dialogToggle()
 
+				this.isfirst = false
+				this.toStart()
+			}
+			this.config = getApp().globalData.config
+			uni.hideLoading()
 		},
 		data() {
 			return {
-				fil: [0, 2, 1]
+				fil: [0],
+				flash: false,
+				result: "waiting",
+				operator: "操作员A",
+				isfirst: true, //!!!
+				config: {},
+				bgc: "bgcR",
+				p: {
+					upok: {
+						icon: {
+							color: '#18BC37',
+							size: '22',
+							type: 'checkmarkempty'
+						},
+						t: "上传成功"
+					},
+					upno: {
+
+						icon: {
+							color: '#E43D33',
+							size: '22',
+							type: 'closeempty'
+						},
+						t: "重新上传",
+						ar: true
+					},
+					uprep: {
+						icon: {
+							color: '#E43D33',
+							size: '22',
+							type: 'loop'
+						},
+						t: "可能重复"
+					}
+				},
+				rlist: [{
+					code: "1234",
+					time: "21232132424",
+					state: "upok"
+				}, {
+					code: "1234",
+					time: "21232132424",
+					state: "upno"
+				}, {
+					code: "1234",
+					time: "21232132424",
+					state: "uprep"
+				}]
 			}
 		},
+		computed: {
 
+		},
 		methods: {
+			showconfig() {
+				uni.showModal({
+					title: "提示",
+					showCancel: false,
+					content: `配置名：${this.config.name}
+完成/总数：${this.config.finish}/${this.config.total}
+配置详情：${this.config.info}
+提示：${this.config.tips}
+					`
+				})
+			},
+			dateFormat(time) {
+				let date = new Date(time);
+				let year = date.getFullYear();
+				// 在日期格式中，月份是从0开始的，因此要加0，使用三元表达式在小于10的前面加0，以达到格式统一  如 09:11:05
+				let month = date.getMonth() + 1 < 10 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1;
+				let day = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();
+				let hours = date.getHours() < 10 ? "0" + date.getHours() : date.getHours();
+				let minutes = date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes();
+				let seconds = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
+				// 拼接
+				// return year + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
+				return hours + ":" + minutes + ":" + seconds;
+			},
+			reup(e, i) {
+				if (e.state != "upno") return;
+				let code = e.code
+				let time = e.time
+				console.log(e, i)
+				uni.showLoading({
+					mask: true,
+					title: "正在重试"
+				})
+				uni.request({
+					method: "POST",
+					timeout:5000,
+					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/qrPost",
+					data: {
+						time,
+						code,
+						operator: this.operator,
+						configid: this.config._id
+					},
+					success: (e) => {
+						e = e.data
+						console.log(e)
+						if (e.code == 0) { //ok
+							setTimeout(() => {
+								console.log(e);
+								this.bgc = "bgcG"
+								uni.vibrateShort({
+									success: function() {
+										console.log('success');
+										uni.showToast({
+											title: "上传成功",
+											icon: "success"
+										})
+									}
+								});
+								this.rlist[i].state = "upok"
+							}, 1000)
+						} else if (e.code == 1) { //可能重复的扫码
+							this.bgc = "bgcR"
+							uni.vibrateLong({
+								success: function() {
+									uni.showToast({
+										title: "重复扫码",
+										icon: "error"
+									})
+								}
+							});
+							this.rlist[i].state = "uprep"
+						} else { //config错误！！
+							this.bgc = "bgcR"
+							uni.vibrateLong({
+								success: function() {
+									uni.showToast({
+										title: "后台配置错误",
+										icon: "error"
+									})
+								}
+							});
+						}
+					},
+					fail: (e) => {
+						console.log(e)
+						this.bgc = "bgcR"
+						uni.vibrateLong({
+							success: function() {
+								uni.showToast({
+									title: "无法连接后台",
+									icon: "error"
+								})
+							}
+						});
+						this.addlist(code, time, "upno")
+					},
+					complete: (e) => {
+						// this.toStart()
+						uni.hideLoading()
+					}
+				});
+			},
+			back() {
+				uni.navigateBack({
+
+				})
+			},
+			dialogToggle() {
+				// this.$refs.inputDialog.open()
+				uni.showModal({
+					title: "操作员",
+					editable: true,
+					content: "该字段将上传后台记录",
+					placeholderText: this.operator,
+					success: (e) => {
+						console.log(e)
+						if (e.confirm) {
+							this.operator = e.content
+						}
+					}
+				})
+			},
+			addlist(code, time, state) {
+				this.rlist.unshift({
+					code,
+					time,
+					state
+				})
+			},
+			qrpost(code, time = new Date()) {
+				console.log({
+					time,
+					code: code,
+					operator: this.operator,
+					configid: this.config.id
+				})
+				uni.showLoading({
+					title:"正在上传",
+					mask:true
+				})
+				uni.request({
+					method: "POST",
+					timeout:5000,
+					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/qrPost",
+					// url:  "http://192.168.1.100/qrPost",
+					data: {
+						time,
+						code: code,
+						operator: this.operator,
+						configid: this.config._id
+					},
+					success: (e) => {
+						e = e.data
+						console.log(e)
+						if (e.code == 0) { //ok
+							setTimeout(() => {
+								console.log(e);
+								this.bgc = "bgcG"
+								uni.vibrateShort({
+									success: function() {
+										console.log('success');
+									}
+								});
+								this.toStart()
+								this.addlist(code, time, "upok")
+							}, 1000)
+						} else if (e.code == 1) { //可能重复的扫码
+							this.bgc = "bgcR"
+							uni.vibrateLong({
+								success: function() {
+									uni.showToast({
+										title: "重复扫码",
+										icon: "error"
+									})
+								}
+							});
+							this.toStart()
+							this.addlist(code, time, "uprep")
+
+						} else { //config错误！！
+							this.bgc = "bgcR"
+							uni.vibrateLong({
+								success: function() {
+									uni.showToast({
+										title: "后台配置错误",
+										icon: "error"
+									})
+								}
+							});
+							this.toStart()
+							this.addlist(code, time, "upno")
+						}
+					},
+					fail: (e) => {
+						console.log(e)
+						this.bgc = "bgcR"
+						uni.vibrateLong({
+							success: function() {
+								uni.showToast({
+									title: "无法连接后台",
+									icon: "error"
+								})
+							}
+						});
+						this.toStart()
+						this.addlist(code, time, "upno")
+					},
+					complete: (e) => {
+						// this.toStart()
+						uni.hideLoading()
+					}
+				});
+			},
+			scanfull() {
+				uni.scanCode({
+					onlyFromCamera: true,
+					success: (e) => {
+						this.code = JSON.stringify(e)
+					}
+				})
+			},
 			success1(e) {
-				console.log("success1:" + JSON.stringify(e));
+				this.bgc = "bgcB"
+				console.log(e.detail.message);
+				console.log(this.config);
+				this.qrpost(e.detail.message)
+
 			},
 			fail1(e) {
 				console.log("fail1:" + JSON.stringify(e));
 			},
 			toStart: function() {
-				this.$refs.barcode.start({
-					conserve: true,
-					filename: '_doc/barcode/'
-				});
+				this.$refs.barcode.start({});
 			},
 			tocancel: function() {
 				this.$refs.barcode.cancel();
 			},
 			toFlash: function() {
-				this.$refs.barcode.setFlash(true);
+				this.$refs.barcode.setFlash(this.$data.flash = !this.$data.flash);
 			},
-
-			toscan: function() {
-				console.log("scan:");
-				const barcodeModule = uni.requireNativePlugin('barcodeScan');
-				barcodeModule.scan("/static/barcode1.png", (e) => {
-					console.log("scan_error:" + JSON.stringify(e));
-				});
-			}
 		}
 	}
 </script>
 
-<style>
-	.barcode {
+<style scoped="scss">
+	.m {
+		flex: 1;
+	}
+
+	.bgcR {
+		background-color: #E43D33;
+	}
+
+	.bgcG {
+		background-color: #18BC37;
+	}
+
+	.bgcB {
+		background-color: #007AFF;
+	}
+
+	.bar {
 		width: 750rpx;
-		height: 700rpx;
+		height: 750rpx;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.barcode {
+		/* margin-top: var(--status-bar-height); */
+		width: 710rpx;
+		height: 730rpx;
 		background-color: #808080;
 	}
 
+	.btns {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin: 20rpx;
+		background-color: #fffff6;
+		border-radius: 20rpx;
+		padding: 5rpx;
+		/* box-shadow: 9rpx 9rpx 50rpx -4rpx rgba(0,0,0,0.75); */
+
+	}
+
+	.btn1 {
+		/* border: 1rpx solid #000; */
+		height: 110rpx;
+		width: 420rpx;
+		border-right: 1rpx solid #ccc;
+	}
+
+	.btn11 {
+		/* border: 1rpx solid #000; */
+		height: 60rpx;
+		justify-content: center;
+	}
+
+	.btn11f {
+		/* border: 1rpx solid #000; */
+		font-size: 50rpx;
+		height: 50rpx;
+		width: 420rpx;
+		lines: 1;
+		text-overflow: ellipsis;
+	}
+
+	.btn12 {
+		height: 50rpx;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+		/* border: 1rpx solid #000; */
+	}
+
+	.btn121 {
+		/* border: 1rpx solid #000; */
+		width: 320rpx;
+		height: 50rpx;
+	}
+
+	.btn121f {
+		font-size: 22rpx;
+		color: #8F939C;
+		lines: 2;
+		text-overflow: ellipsis;
+		height: 50rpx;
+		width: 320rpx;
+	}
+
+	.btn122 {
+		/* border: 1rpx solid #000; */
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100rpx;
+		height: 50rpx;
+	}
+
+	.btn122f {
+		font-size: 25rpx;
+		color: #007AFF;
+		font-weight: bold;
+		border-bottom: 1rpx solid #007AFF;
+	}
+
+	.btn2 {
+		/* border: 1rpx solid #000; */
+		justify-content: center;
+		align-items: center;
+		height: 110rpx;
+		width: 190rpx;
+		border-right: 1rpx solid #ccc;
+	}
+
+	.btn2f {
+		font-size: 27rpx;
+		color: #8F939C;
+	}
+
+	.btn3 {
+		/* border: 1rpx solid #000; */
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		height: 110rpx;
+		width: 80rpx;
+	}
+
+
+
 	.btn {
-		top: 20rpx;
-		width: 730rpx;
-		margin-left: 10rpx;
-		margin-top: 10rpx;
-		background-color: #458B00;
+		font-size: 190rpx;
+		width: 130rpx;
+		height: 70rpx;
+		margin: 25rpx 25rpx;
+		background-color: #5555ff;
 		border-radius: 10rpx;
+	}
+
+	.btn-f {
+		font-size: 30rpx;
+	}
+
+	.v {
+		flex: 1
+	}
+
+	.res {
+		width: 750rpx;
+		/* height: 100%; */
+		/* background-color: #007AFF; */
+		flex: 1;
+
+	}
+
+	.res1 {
+		background-color: #007AFF;
+		flex: 1;
+		width: 710rpx;
+		margin: 20rpx;
+		margin-top: 0;
+		border-radius: 20rpx;
+		overflow: hidden;
 	}
 </style>
