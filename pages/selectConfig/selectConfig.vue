@@ -29,8 +29,9 @@
 		},
 		methods: {
 			getConfig() {
+				console.log(getApp().globalData.baseURL + "/configsGet")
 				uni.request({
-					url: getApp().globalData.baseURL + "/configGet",
+					url: getApp().globalData.baseURL + "/configsGet",
 					success: (e) => {
 						this.$data.configs = e.data.configs;
 						console.log(this.$data.configs);

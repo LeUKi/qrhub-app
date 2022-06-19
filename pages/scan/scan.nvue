@@ -1,5 +1,6 @@
 <template>
 	<view :class="'m '+bgc">
+		<view :style="{ height: iStatusBarHeight + 'px'}"></view>
 
 		<view class="bar">
 			<barcode id='1' class="barcode" autostart="false" ref="barcode" background="rgba(0,0,0)"
@@ -42,7 +43,8 @@
 			<view class="res1">
 				<uni-list>
 					<uni-list-item v-for="(item,index) in rlist" :key="item.time" :show-extra-icon="true"
-						:extra-icon="p[item.state].icon" :title="item.code" :note="dateFormat(item.time)"
+						:extra-icon="p[item.state].icon" :title="item.code"
+						:note="item.finish==undefined?dateFormat(item.time):dateFormat(item.time)+' No.'+item.no+' 已扫描'+item.finish+'个'"
 						:rightText="p[item.state].t" :showArrow="p[item.state].ar" @click="reup(item,index)"
 						clickable />
 					<!-- 					<uni-list-item :show-extra-icon="true" :extra-icon="p.upok.icon" title="列表左侧带扩展图标"
@@ -59,11 +61,28 @@
 </template>
 
 <script>
+	const {
+		codeGen
+	} = require("./codeGenerator")
 	export default {
 		onLoad() {
 			this.bgc = "bgcG"
+			this.iStatusBarHeight = uni.getSystemInfoSync().statusBarHeight;
 		},
 		onReady() {
+
+			// for (let i = 0; i < 10; i++) {
+			// 	this.rlist.push({
+			// 		code: "TEST00" + i,
+			// 		time: new Date(),
+			// 		state: "upno",
+			// 		no:undefined,
+			// 		finish:undefined
+			// 	})
+			// }
+
+
+
 			if (this.isfirst) {
 				this.dialogToggle()
 
@@ -75,6 +94,7 @@
 		},
 		data() {
 			return {
+				iStatusBarHeight: 0,
 				fil: [0],
 				flash: false,
 				result: "waiting",
@@ -94,9 +114,9 @@
 					upno: {
 
 						icon: {
-							color: '#E43D33',
+							color: '#ff8800',
 							size: '22',
-							type: 'closeempty'
+							type: 'loop'
 						},
 						t: "重新上传",
 						ar: true
@@ -105,28 +125,19 @@
 						icon: {
 							color: '#E43D33',
 							size: '22',
-							type: 'loop'
+							type: 'closeempty'
 						},
 						t: "可能重复"
 					}
 				},
-				rlist: [{
-					code: "1234",
-					time: "21232132424",
-					state: "upok"
-				}, {
-					code: "1234",
-					time: "21232132424",
-					state: "upno"
-				}, {
-					code: "1234",
-					time: "21232132424",
-					state: "uprep"
-				}]
+				rlist: [],
+
 			}
 		},
 		computed: {
-
+			genData() {
+				return codeGen(this.config.rules)
+			}
 		},
 		methods: {
 			showconfig() {
@@ -157,14 +168,19 @@
 				if (e.state != "upno") return;
 				let code = e.code
 				let time = e.time
-				console.log(e, i)
+				console.log('reup', {
+					time,
+					code,
+					operator: this.operator,
+					configid: this.config._id
+				})
 				uni.showLoading({
 					mask: true,
 					title: "正在重试"
 				})
 				uni.request({
 					method: "POST",
-					timeout:5000,
+					timeout: 5000,
 					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/qrPost",
 					data: {
 						time,
@@ -188,7 +204,10 @@
 										})
 									}
 								});
+								this.config.finish = e.data.finish
 								this.rlist[i].state = "upok"
+								this.rlist[i].finish = e.data.finish
+								this.rlist[i].no = e.data.no
 							}, 1000)
 						} else if (e.code == 1) { //可能重复的扫码
 							this.bgc = "bgcR"
@@ -206,7 +225,7 @@
 							uni.vibrateLong({
 								success: function() {
 									uni.showToast({
-										title: "后台配置错误",
+										title: "该配置已关闭",
 										icon: "error"
 									})
 								}
@@ -219,7 +238,7 @@
 						uni.vibrateLong({
 							success: function() {
 								uni.showToast({
-									title: "无法连接后台",
+									title: "该配置已关闭",
 									icon: "error"
 								})
 							}
@@ -227,6 +246,7 @@
 						this.addlist(code, time, "upno")
 					},
 					complete: (e) => {
+						console.log(e)
 						// this.toStart()
 						uni.hideLoading()
 					}
@@ -252,29 +272,33 @@
 					}
 				})
 			},
-			addlist(code, time, state) {
+			addlist(code, time, state, e) {
+				console.log(e)
 				this.rlist.unshift({
 					code,
 					time,
-					state
+					state,
+					no: e.data.no,
+					finish: e.data.finish
 				})
 			},
 			qrpost(code, time = new Date()) {
-				console.log({
+				console.log('qrpost', {
 					time,
 					code: code,
 					operator: this.operator,
 					configid: this.config.id
 				})
 				uni.showLoading({
-					title:"正在上传",
-					mask:true
+					title: "正在上传",
+					mask: true
 				})
 				uni.request({
 					method: "POST",
-					timeout:5000,
+					timeout: 5000,
 					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/qrPost",
 					// url:  "http://192.168.1.100/qrPost",
+					dataType: "json",
 					data: {
 						time,
 						code: code,
@@ -286,7 +310,7 @@
 						console.log(e)
 						if (e.code == 0) { //ok
 							setTimeout(() => {
-								console.log(e);
+								// console.log(e);''
 								this.bgc = "bgcG"
 								uni.vibrateShort({
 									success: function() {
@@ -294,7 +318,8 @@
 									}
 								});
 								this.toStart()
-								this.addlist(code, time, "upok")
+								this.config.finish = e.data.finish
+								this.addlist(code, time, "upok", e)
 							}, 1000)
 						} else if (e.code == 1) { //可能重复的扫码
 							this.bgc = "bgcR"
@@ -307,7 +332,7 @@
 								}
 							});
 							this.toStart()
-							this.addlist(code, time, "uprep")
+							this.addlist(code, time, "uprep", e)
 
 						} else { //config错误！！
 							this.bgc = "bgcR"
@@ -338,6 +363,7 @@
 						this.addlist(code, time, "upno")
 					},
 					complete: (e) => {
+						console.log(e)
 						// this.toStart()
 						uni.hideLoading()
 					}
@@ -354,9 +380,14 @@
 			success1(e) {
 				this.bgc = "bgcB"
 				console.log(e.detail.message);
-				console.log(this.config);
-				this.qrpost(e.detail.message)
-
+				if (this.genData.includes(e.detail.message)) this.qrpost(e.detail.message)
+				else {
+					uni.showToast({
+						title: "该码不符合规则",
+						icon: "error"
+					})
+					this.toStart()
+				}
 			},
 			fail1(e) {
 				console.log("fail1:" + JSON.stringify(e));

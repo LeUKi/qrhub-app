@@ -9,10 +9,11 @@
 		<!-- 		<button type="default" v-on:click="scan2">scan QRcode2</button>
 		<button type="default" v-on:click="selectConfig">select config</button>
 		{{code}} -->
-		<uni-section title="基础用法" type="line">
+		<uni-list title="基础用法" type="line">
 
-			<uni-list-item v-for="item in configs" :key="item._id" :title="item.name" :note="item.info" showArrow
-				clickable @click="go(item)" direction="column">
+			<uni-list-item v-for="item in configs" v-if="item.state" :key="item._id" :title="item.name"
+				:note="item.info" :showArrow="item.state" @click="go(item)" direction="column" :disabled="!item.state"
+				:clickable="item.state">
 				<template v-slot:footer>
 					<view class="dot-out">
 						<view class="dot-in">{{item.finish+'/'+item.total}}</view>
@@ -20,7 +21,8 @@
 				</template>
 			</uni-list-item>
 
-		</uni-section>
+		</uni-list>
+
 	</view>
 </template>
 
@@ -50,6 +52,10 @@
 		onReady() {
 			this.bgurl = getApp().globalData.baseURL
 		},
+		onShow() {
+			uni.hideLoading();
+			this.getConfig()
+		},
 		methods: {
 			onbgicon(e) {
 				console.log(e)
@@ -75,12 +81,17 @@
 				}
 			},
 			getConfig() {
+				uni.setStorageSync('host', getApp().globalData.baseURL);
+				if (getApp().globalData.baseURL == "") {
+					uni.stopPullDownRefresh()
+					return;
+				}
 				uni.showLoading({
 					title: '加载中'
 				});
 				uni.request({
-					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/configGet",
-					timeout:3000,
+					url: getApp().globalData.basePRE + getApp().globalData.baseURL + "/configsGet",
+					timeout: 3000,
 					success: (e) => {
 						this.configs = e.data.data.configs;
 						console.log(e)
@@ -88,8 +99,8 @@
 					fail(e) {
 						console.log(e)
 						uni.showToast({
-							title:"无法连接",
-							icon:"error"
+							title: "无法连接",
+							icon: "error"
 						})
 						uni.hideLoading();
 					},
@@ -100,16 +111,16 @@
 					}
 				});
 			},
-			selectConfig() {
-				uni.navigateTo({
-					url: "../selectConfig/selectConfig"
-				})
-			},
+			// selectConfig() {
+			// 	uni.navigateTo({
+			// 		url: "../selectConfig/selectConfig"
+			// 	})
+			// },
 			go(e) {
 				console.log(e)
 				getApp().globalData.config = e
 				uni.showLoading({
-					mask:true
+					mask: true
 				})
 				uni.navigateTo({
 					url: "/pages/scan/scan",
@@ -121,21 +132,28 @@
 			scan() {
 				uni.scanCode({
 					// onlyFromCamera: true,
+					// ["a","114.132.55.189:8888"]
 					success: (e) => {
 						let result = JSON.parse(e.result)
+						console.log(result)
 						if (result[0] === "a") {
 							this.bgurl = result[1]
+							getApp().globalData.baseURL = result[1]
 							console.log('scan result:', result[1])
+							this.getConfig()
 						}
 						if (result[0] === "b") {
 							this.bgurl = result[1]
+							getApp().globalData.baseURL = result[1]
 							uni.request({
-								url: getApp().globalData.basePRE + getApp().globalData.baseURL +
-									"/configGetOne",
+								url: getApp().globalData.basePRE + result[1] +
+									"/configGet",
+								data: {
+									configid: result[2]
+								},
 								success: (e) => {
-									this.configs = e.data.config[0];
-									console.log(this.$data.config[0]);
-									this.go()
+									console.log(e)
+									this.go(e.data.data.config[0])
 								},
 								fail(e) {
 									console.log(e)
@@ -181,6 +199,15 @@
 
 	.bg {
 		margin-bottom: 30rpx;
+
+	}
+
+	.bg-inp {
+		/* margin: 20px; */
+	}
+
+	.sv {
+		/* margin-top: 100rpx; */
 	}
 
 	.dot-in {
